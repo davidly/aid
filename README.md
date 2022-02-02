@@ -82,3 +82,76 @@ Sample output for finding focal lengths used for photos taken with Leica bodies:
               50         1074
               75           10
               
+Sample output for finding focal lengths used for photos taken with a Canon G7-X Mark II:
+
+    C:\>aid /p:d:\zdrive\pics /e:cr2 /a:f "/m:G7 X Mark II"
+    found 61053 files
+
+    found 63 unique focal lengths in 13963 files with that data
+    focal length        count
+    ------------        -----
+              24         6296
+              26           10
+              27           33
+              28           63
+              29           39
+              30           52
+              31           70
+              32           97
+              33           90
+              34           82
+              35           87
+              36           94
+              37          120
+              38          188
+              39           95
+              40          181
+              41          147
+              42          119
+              43          160
+              44          166
+              45          114
+              46          156
+              47           86
+              48           67
+              49           53
+              50          154
+              51          229
+              52           44
+              53           70
+              54          206
+              55           52
+              56           65
+              57          192
+              58           67
+              59           59
+              60           87
+              61           79
+              62           75
+              63           46
+              64          122
+              65           53
+              66           31
+              67          110
+              68           63
+              69           77
+              70           62
+              71          100
+              72           56
+              73           86
+              75           46
+              76           30
+              77           50
+              79           76
+              80           24
+              82           41
+              83           54
+              85           54
+              86           29
+              88           72
+              90           56
+              92           35
+              95           68
+             100         2478
+             
+         
