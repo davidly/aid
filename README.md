@@ -1,5 +1,5 @@
 # aid
-Aggregate Image Data. Runs reports like summarizing lenses uses in a set of images.
+Aggregate Image Data. Runs reports like summarizing camera and lenses usage in a set of images.
 
 Reports include finding all DNG/TIF/JPG files with embedded Adobe edit instructions, extracting
 images from flac/mp3 files in bulk, summarizing focal lengths used for images, finding photos
