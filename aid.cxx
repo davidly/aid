@@ -1,4 +1,4 @@
-// AIG: Aggregate Image Data
+// AID: Aggregate Image Data
 
 #define _OLE32_
 
@@ -29,7 +29,7 @@ CDJLTrace tracer;
 
 const int MetadataBufferSize = 100;
 
-enum EnumAppMode { modeSerialNumbers, modeFocalLengths, modeModels, modeLenses, modeHasImage, modeHasGPS, modeEmbedded, modeAdobeEdits };
+enum EnumAppMode { modeSerialNumbers, modeFocalLengths, modeModels, modeLenses, modeHasImage, modeHasGPS, modeEmbedded, modeAdobeEdits, modeRatings };
 
 class GenericEntry
 {
@@ -152,6 +152,48 @@ class FocalLengthEntry : public GenericEntry
         }
 };
 
+class RatingEntry : public GenericEntry
+{
+    private:
+        int rating;
+    
+    public:
+        RatingEntry( int r )
+        {
+            rating = r;
+        }
+    
+        bool Same( RatingEntry & entry )
+        {
+            return rating == entry.rating;
+        }
+    
+        static int EntryCompare( const void * a, const void * b )
+        {
+            RatingEntry *pa = (RatingEntry *) a;
+            RatingEntry *pb = (RatingEntry *) b;
+    
+            if ( pa->rating > pb->rating )
+                return 1;
+    
+            if ( pa->rating < pb->rating )
+                return -1;
+    
+            return 0;
+        } //EntryCompare
+    
+        static void PrintHeader()
+        {
+            printf( "rating              count\n" );
+            printf( "------------        -----\n" );
+        }
+    
+        void PrintItem()
+        {
+            printf( "%12d %12zu\n", rating, Count() );
+        }
+};
+
 class SerialNumberEntry : public GenericEntry
 {
     private:
@@ -192,13 +234,13 @@ class SerialNumberEntry : public GenericEntry
     
         static void PrintHeader()
         {
-            printf( "make                           model                                            serial number                                      count\n" );
-            printf( "----                           -----                                            -------------                                      -----\n" );
+            printf( "make                           model                                            serial number                                             count\n" );
+            printf( "----                           -----                                            -------------                                             -----\n" );
         }
     
         void PrintItem()
         {
-            printf( "%-29s  %-47s  %-50s %zd\n", acMake, acModel, acSerialNumber, Count() );
+            printf( "%-29s  %-47s  %-50s %12zu\n", acMake, acModel, acSerialNumber, Count() );
         }
 };
 
@@ -237,13 +279,13 @@ class ModelEntry : public GenericEntry
     
         static void PrintHeader()
         {
-            printf( "make                           model                                            count\n" );
-            printf( "----                           -----                                            -----\n" );
+            printf( "make                           model                                                   count\n" );
+            printf( "----                           -----                                                   -----\n" );
         }
     
         void PrintItem()
         {
-            printf( "%-29s  %-47s  %zd\n", acMake, acModel, Count() );
+            printf( "%-29s  %-47s  %12zu\n", acMake, acModel, Count() );
         }
 };
 
@@ -320,6 +362,7 @@ void Usage()
     printf( "                          l   Lens Models\n" );
     printf( "                          m   Models\n" );
     printf( "                          s   Serial Numbers\n" );
+    printf( "                          r   Rating\n" );
     printf( "       /c             Used with /a:e, creates a file for each embedded image in the 'out' subdirectory.\n" );
     printf( "       /e:            Specifies the file extension to include. Default is *\n" );
     printf( "       /m:            Used with /p and /e. The model substring must be in the EquipModel case insensitive.\n" );
@@ -450,6 +493,7 @@ void ProcessFile(
     CEntryTracker<SerialNumberEntry> & bodies,
     CEntryTracker<SerialNumberEntry> & lenses,
     CEntryTracker<FocalLengthEntry> & focalLengths,
+    CEntryTracker<RatingEntry> & ratings,
     CEntryTracker<ModelEntry> & models,
     CEntryTracker<EmbeddedImageEntry> & embeddedImages,
     LONG & withAdobeEdits,
@@ -532,6 +576,18 @@ void ProcessFile(
 
             FocalLengthEntry fl( focalLen );
             focalLengths.AddOrUpdate( fl );
+        }
+    }
+    else if ( EnumAppMode::modeRatings == appMode )
+    {
+        int rating;
+
+        bool found = id->GetRating( array[ i ], rating );
+
+        if ( found )
+        {
+            RatingEntry re( rating );
+            ratings.AddOrUpdate( re );
         }
     }
     else if ( EnumAppMode::modeModels == appMode )
@@ -729,6 +785,8 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
                    appMode = EnumAppMode::modeModels;
                else if ( L'l' == mode )
                    appMode = EnumAppMode::modeLenses;
+               else if ( L'r' == mode )
+                   appMode = EnumAppMode::modeRatings;
                else
                    Usage();
            }
@@ -913,6 +971,17 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
                 else
                     printf( "no focal length information found\n" );
             }
+            else if ( EnumAppMode::modeRatings == appMode )
+            {
+                int rating;
+    
+                bool found = id.GetRating( awcFilename, rating );
+    
+                if ( found )
+                    printf( "rating: %d\n", rating );
+                else
+                    printf( "no rating information found\n" );
+            }
             else if ( EnumAppMode::modeModels == appMode )
             {
                 char acMake[ MetadataBufferSize ] = { 0 };
@@ -1055,6 +1124,7 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
             CEntryTracker<SerialNumberEntry> bodies;
             CEntryTracker<SerialNumberEntry> lenses;
             CEntryTracker<FocalLengthEntry> focalLengths;
+            CEntryTracker<RatingEntry> ratings;
             CEntryTracker<ModelEntry> models;
             CEntryTracker<EmbeddedImageEntry> embeddedImages;
             LONG withAdobeEdits = 0;
@@ -1066,14 +1136,14 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
             {
                 for ( int i = 0; i < array.Count(); i++ )
                     ProcessFile( appMode, verboseTracing, mtx, acCameraModel, hasImageCount, hasGPSCount, array, i, bodies, lenses,
-                                 focalLengths, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
+                                 focalLengths, ratings, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
             }
             else
             {
                 parallel_for ( 0, (int) array.Count(), [&] ( int i  )
                 {
                     ProcessFile( appMode, verboseTracing, mtx, acCameraModel, hasImageCount, hasGPSCount, array, i, bodies, lenses,
-                                 focalLengths, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
+                                 focalLengths, ratings, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
                 }, static_partitioner() );
             }
 
@@ -1093,6 +1163,10 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
             else if ( EnumAppMode::modeFocalLengths == appMode )
             {
                 focalLengths.PrintEntries( "focal lengths", sortOnCount );
+            }
+            else if ( EnumAppMode::modeRatings == appMode )
+            {
+                ratings.PrintEntries( "ratings", sortOnCount );
             }
             else if ( EnumAppMode::modeModels == appMode )
             {
