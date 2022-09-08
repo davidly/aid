@@ -576,6 +576,14 @@ void ProcessFile(
 
             FocalLengthEntry fl( focalLen );
             focalLengths.AddOrUpdate( fl );
+
+            if ( verboseTracing )
+            {
+                lock_guard<mutex> lock( mtx );
+
+                printf( "%ws\n", array[ i ] );
+                printf( "    focal length: %u\n", focalLen );
+            }
         }
     }
     else if ( EnumAppMode::modeRatings == appMode )
@@ -584,10 +592,18 @@ void ProcessFile(
 
         bool found = id->GetRating( array[ i ], rating );
 
-        if ( found )
+        if ( found && ModelInName( acModel, acCameraModel ) )
         {
             RatingEntry re( rating );
             ratings.AddOrUpdate( re );
+
+            if ( verboseTracing )
+            {
+                lock_guard<mutex> lock( mtx );
+
+                printf( "%ws\n", array[ i ] );
+                printf( "    rating: %d\n", rating );
+            }
         }
     }
     else if ( EnumAppMode::modeModels == appMode )
