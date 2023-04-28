@@ -439,7 +439,7 @@ void CreateEmbeddedImages( CEntryTracker<EmbeddedImageEntry> & embeddedImages )
 
     wcscat( awc, L"out\\" );
     BOOL ok = CreateDirectory( awc, 0 );
-    if ( !ok )
+    if ( !ok && ERROR_ALREADY_EXISTS != GetLastError() )
     {
         printf( "can't create directory %ws\n", awc );
         return;
@@ -730,6 +730,8 @@ void ProcessFile(
             else
                 printf( "can't open stream %ws\n", array[ i ] );
         }
+        else
+            printf( "%ws\n", array[ i ] );
     }
 } //ProcessFile
 
