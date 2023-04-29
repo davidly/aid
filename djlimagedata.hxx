@@ -3171,6 +3171,30 @@ public:
         return flBestGuess;
     } //FindFocalLength
 
+    bool FindFNumber( const WCHAR * pwcPath, double * pFNumber )
+    {
+        UpdateCache( pwcPath );
+
+        bool found = false;
+    
+        if ( -1 != g_FNumberNum && -1 != g_FNumberDen && 0 != g_FNumberDen )
+        {
+            *pFNumber = (double) g_FNumberNum / (double) g_FNumberDen;
+            found = true;
+        }
+        else if ( -1 != g_ApertureNum && -1 != g_ApertureDen && 0 != g_ApertureDen )
+        {
+            // Compute f number from aperture. The Leica M11 Monochrom's EXIF data has Aperture and not FNumber
+            // That camera guesses the Aperture based on the light meter and exposure.
+
+            double aperture = (double) g_ApertureNum / (double) g_ApertureDen;
+            *pFNumber = pow( sqrt( 2.0 ), aperture );
+            found = true;
+        }
+
+        return found;
+    } //FindFNumber
+
     bool FindDateTime( const WCHAR * pwcPath, char * pcDateTime, int buflen )
     {
         UpdateCache( pwcPath );
@@ -3255,7 +3279,7 @@ public:
         }
         else if ( -1 != g_ApertureNum && -1 != g_ApertureDen && 0 != g_ApertureDen )
         {
-            // compute f number from aperture
+            // compute f number from aperture. The Leica M11 Monochrom's EXIF data has Aperture and not FNumber
 
             double aperture = (double) g_ApertureNum / (double) g_ApertureDen;
             double fnumber = pow( sqrt( 2.0 ), aperture );

@@ -29,7 +29,7 @@ CDJLTrace tracer;
 
 const int MetadataBufferSize = 100;
 
-enum EnumAppMode { modeSerialNumbers, modeFocalLengths, modeModels, modeLenses, modeHasImage, modeHasGPS, modeEmbedded, modeAdobeEdits, modeRatings };
+enum EnumAppMode { modeSerialNumbers, modeFocalLengths, modeFNumbers, modeModels, modeLenses, modeHasImage, modeHasGPS, modeEmbedded, modeAdobeEdits, modeRatings };
 
 class GenericEntry
 {
@@ -149,6 +149,48 @@ class FocalLengthEntry : public GenericEntry
         void PrintItem()
         {
             printf( "%12u %12zu\n", focalLength, Count() );
+        }
+};
+
+class FNumberEntry : public GenericEntry
+{
+    private:
+        double fNumber;
+    
+    public:
+        FNumberEntry( double fn )
+        {
+            fNumber = fn;
+        }
+    
+        bool Same( FNumberEntry & entry )
+        {
+            return fNumber == entry.fNumber;
+        }
+    
+        static int EntryCompare( const void * a, const void * b )
+        {
+            FNumberEntry *pa = (FNumberEntry *) a;
+            FNumberEntry *pb = (FNumberEntry *) b;
+    
+            if ( pa->fNumber > pb->fNumber )
+                return 1;
+    
+            if ( pa->fNumber < pb->fNumber )
+                return -1;
+    
+            return 0;
+        } //EntryCompare
+    
+        static void PrintHeader()
+        {
+            printf( "F Number            count\n" );
+            printf( "------------        -----\n" );
+        }
+    
+        void PrintItem()
+        {
+            printf( "%12.1lf %12zu\n", fNumber, Count() );
         }
 };
 
@@ -361,6 +403,7 @@ void Usage()
     printf( "                          i   Valid image embedded (e.g. flac files)\n" );
     printf( "                          l   Lens Models\n" );
     printf( "                          m   Models\n" );
+    printf( "                          n   F Number\n" );
     printf( "                          s   Serial Numbers\n" );
     printf( "                          r   Rating\n" );
     printf( "       /c             Used with /a:e, creates a file for each embedded image in the 'out' subdirectory.\n" );
@@ -493,6 +536,7 @@ void ProcessFile(
     CEntryTracker<SerialNumberEntry> & bodies,
     CEntryTracker<SerialNumberEntry> & lenses,
     CEntryTracker<FocalLengthEntry> & focalLengths,
+    CEntryTracker<FNumberEntry> & fNumbers,
     CEntryTracker<RatingEntry> & ratings,
     CEntryTracker<ModelEntry> & models,
     CEntryTracker<EmbeddedImageEntry> & embeddedImages,
@@ -583,6 +627,31 @@ void ProcessFile(
 
                 printf( "%ws\n", array[ i ] );
                 printf( "    focal length: %u\n", focalLen );
+            }
+        }
+    }
+    else if ( EnumAppMode::modeFNumbers == appMode )
+    {
+        double fNumber;
+        bool ok = id->FindFNumber( array[ i ], &fNumber );
+
+        // The Leica M10 stores neither FNumber or ApertureValue, unlike the M11 Monochrom which guesses ApertureValue
+
+        //if ( !ok )
+        //    printf( "can't find fnumber for %ws\n", array[ i ] );
+
+        if ( ok && ModelInName( acModel, acCameraModel ) )
+        {
+            fNumber = round( 10.0 * fNumber ) / 10.0;
+            FNumberEntry fne( fNumber );
+            fNumbers.AddOrUpdate( fne );
+
+            if ( verboseTracing )
+            {
+                lock_guard<mutex> lock( mtx );
+
+                printf( "%ws\n", array[ i ] );
+                printf( "    f number: %lf\n", fNumber );
             }
         }
     }
@@ -801,6 +870,8 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
                    appMode = EnumAppMode::modeHasImage;
                else if ( L'm' == mode )
                    appMode = EnumAppMode::modeModels;
+               else if ( L'n' == mode )
+                   appMode = EnumAppMode::modeFNumbers;
                else if ( L'l' == mode )
                    appMode = EnumAppMode::modeLenses;
                else if ( L'r' == mode )
@@ -989,6 +1060,18 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
                 else
                     printf( "no focal length information found\n" );
             }
+            else if ( EnumAppMode::modeFNumbers == appMode )
+            {
+                double fnumber;
+                char acModel[ 100 ] = { 0 };
+    
+                bool ok = id.FindFNumber( awcFilename, &fnumber );
+    
+                if ( ok )
+                    printf( "F Number: %.1lf\n", fnumber );
+                else
+                    printf( "no F Number information found\n" );
+            }
             else if ( EnumAppMode::modeRatings == appMode )
             {
                 int rating;
@@ -1142,6 +1225,7 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
             CEntryTracker<SerialNumberEntry> bodies;
             CEntryTracker<SerialNumberEntry> lenses;
             CEntryTracker<FocalLengthEntry> focalLengths;
+            CEntryTracker<FNumberEntry> fNumbers;
             CEntryTracker<RatingEntry> ratings;
             CEntryTracker<ModelEntry> models;
             CEntryTracker<EmbeddedImageEntry> embeddedImages;
@@ -1154,14 +1238,14 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
             {
                 for ( int i = 0; i < array.Count(); i++ )
                     ProcessFile( appMode, verboseTracing, mtx, acCameraModel, hasImageCount, hasGPSCount, array, i, bodies, lenses,
-                                 focalLengths, ratings, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
+                                 focalLengths, fNumbers, ratings, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
             }
             else
             {
                 parallel_for ( 0, (int) array.Count(), [&] ( int i  )
                 {
                     ProcessFile( appMode, verboseTracing, mtx, acCameraModel, hasImageCount, hasGPSCount, array, i, bodies, lenses,
-                                 focalLengths, ratings, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
+                                 focalLengths, fNumbers, ratings, models, embeddedImages, withAdobeEdits, withoutAdobeEdits );
                 }, static_partitioner() );
             }
 
@@ -1181,6 +1265,10 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
             else if ( EnumAppMode::modeFocalLengths == appMode )
             {
                 focalLengths.PrintEntries( "focal lengths", sortOnCount );
+            }
+            else if ( EnumAppMode::modeFNumbers == appMode )
+            {
+                fNumbers.PrintEntries( "FNumbers", sortOnCount );
             }
             else if ( EnumAppMode::modeRatings == appMode )
             {
