@@ -21,6 +21,7 @@ Usage
                               i   Valid image embedded (e.g. flac files)
                               l   Lens Models
                               m   Models
+                              n   F Numbers
                               s   Serial Numbers
                               r   Rating (0-5 in XMP data)
            /c             Used with /a:e, creates a file for each embedded image in the 'out' subdirectory.
