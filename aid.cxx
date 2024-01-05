@@ -657,8 +657,7 @@ void ProcessFile(
     }
     else if ( EnumAppMode::modeRatings == appMode )
     {
-        int rating;
-
+        char rating;
         bool found = id->GetRating( array[ i ], rating );
 
         if ( found && ModelInName( acModel, acCameraModel ) )
@@ -1074,8 +1073,7 @@ extern "C" int __cdecl wmain( int argc, WCHAR * argv[] )
             }
             else if ( EnumAppMode::modeRatings == appMode )
             {
-                int rating;
-    
+                char rating;
                 bool found = id.GetRating( awcFilename, rating );
     
                 if ( found )
